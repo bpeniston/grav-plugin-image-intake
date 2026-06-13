@@ -94,8 +94,21 @@ class ImageIntakePlugin extends Plugin
     {
         $grav = Grav::instance();
 
+        // Resolve the modular-template directories of the active theme (and any parent
+        // theme it inherits from) via the theme:// stream. Guard defensively: a config
+        // page must never fatal just because the stream isn't ready.
+        $dirs = [];
+        try {
+            $locator = $grav['locator'];
+            if ($locator->schemeExists('theme')) {
+                $dirs = (array) $locator->findResources('theme://templates/modular');
+            }
+        } catch (\Exception $e) {
+            $dirs = [];
+        }
+
         $names = [];
-        foreach ((array) $grav['locator']->findResources('theme://templates/modular') as $dir) {
+        foreach ($dirs as $dir) {
             foreach (glob(rtrim((string) $dir, '/') . '/*.html.twig') ?: [] as $tpl) {
                 $name = basename($tpl, '.html.twig');
                 // Skip partials/private templates (conventionally prefixed with "_").
