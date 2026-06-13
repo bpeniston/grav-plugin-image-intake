@@ -1,0 +1,9 @@
+enabled: true
+sanitize_filenames: true
+jpeg_quality: 82
+default_max_width: 2000
+caps:
+  gallery-draggable: 1200
+  gallery: 1200
+  hero: 2560
+  feature-images: 800

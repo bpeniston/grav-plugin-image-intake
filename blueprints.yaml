@@ -1,0 +1,75 @@
+name: Image Intake
+slug: image-intake
+type: plugin
+version: 0.2.0
+description: "On Page-Media upload, sanitizes the filename and shrinks oversized images to a per-template maximum width (discarding the original). Widths are configured here per modular template — no SSH required."
+icon: image
+author:
+  name: FRC 449
+  email: comms@navybook.com
+homepage: https://github.com/bpeniston/grav-plugin-image-intake
+bugs: https://github.com/bpeniston/grav-plugin-image-intake/issues
+keywords: media, image, resize, upload, sanitize, imagemagick
+license: MIT
+
+dependencies:
+  - { name: grav, version: '>=1.7.0' }
+
+form:
+  validation: loose
+  fields:
+    enabled:
+      type: toggle
+      label: Plugin status
+      highlight: 1
+      default: 1
+      options:
+        1: Enabled
+        0: Disabled
+      validate:
+        type: bool
+
+    sanitize_filenames:
+      type: toggle
+      label: Sanitize filenames
+      help: "Lowercase the name and replace spaces and unsafe characters with hyphens on upload."
+      highlight: 1
+      default: 1
+      options:
+        1: Enabled
+        0: Disabled
+      validate:
+        type: bool
+
+    default_max_width:
+      type: number
+      label: Default maximum width (px)
+      help: "Applied to any template without its own width below. Set to 0 to never resize by default."
+      default: 2000
+      validate:
+        type: int
+        min: 0
+
+    jpeg_quality:
+      type: number
+      label: Re-encode quality (1–100)
+      help: "Quality used when an image is resized and re-encoded. 82 is a good balance of size and clarity."
+      default: 82
+      validate:
+        type: int
+        min: 1
+        max: 100
+
+    caps_section:
+      type: section
+      title: Per-template maximum widths
+      text: "One field per modular template found in your active theme (and any parent theme it inherits from). Blank = use the default width above. 0 = never resize uploads made on that template."
+      underline: true
+
+    caps:
+      type: fieldset
+      title: Template widths
+      collapsible: false
+      fields: {}
+      # Fields below are generated at render time from the theme's modular templates.
+      data-fields@: '\Grav\Plugin\ImageIntakePlugin::capWidthFields'
