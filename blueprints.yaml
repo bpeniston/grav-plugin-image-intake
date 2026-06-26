@@ -1,7 +1,7 @@
 name: Image Intake
 slug: image-intake
 type: plugin
-version: 0.4.0
+version: 0.5.0
 description: "On Page-Media upload, sanitizes the filename and shrinks oversized images to a per-template maximum width (discarding the original). Also keeps gallery modules' photo list in sync with their Page Media on save, and (on Grav 2.0/admin2) restores the blueprint Content-body default on new pages. Widths are configured here per modular template — no SSH required."
 icon: image
 author:

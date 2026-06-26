@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.0]
+### Fixed
+- **Gallery auto-sync under newer Grav-2.0 `api` (≈ ≥1.0.3 / Grav 2.0.3).** The api now saves the page *before* firing its update event, so the `header.<field>` mutation made in `onAdminSave` no longer reached disk — galleries stopped auto-populating their list from Page Media on save. Added an `onApiPageUpdated` hook that reconciles the list and re-saves only when it changed. `onAdminSave` is retained for the older api (1.0.2) / classic admin, where it still works, so the plugin stays compatible across both.
+
 ## [0.4.0]
 ### Added
 - **Content-body seeding on new pages (Grav 2.0 / admin2).** On page/module create (`onApiBeforePageCreate`), when the body is empty, inject the template's blueprint Content-field `default` (resolved from the active theme's blueprints, falling back to `default.yaml`). Restores the editor "notes slot" / per-template instructions that admin2 otherwise drops because it ignores the Content-field `default`. Toggle: `content_seed.enabled` (default on).

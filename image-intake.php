@@ -22,6 +22,7 @@ class ImageIntakePlugin extends Plugin
         return [
             'onAdminAfterAddMedia'  => ['onAdminAfterAddMedia', 0],
             'onAdminSave'           => ['onAdminSave', 0],
+            'onApiPageUpdated'      => ['onApiPageUpdated', 0],
             'onApiBeforePageCreate' => ['onApiBeforePageCreate', 0],
         ];
     }
@@ -126,6 +127,46 @@ class ImageIntakePlugin extends Plugin
         }
 
         $this->reconcileGalleryList($page, (string) $fields[$template]);
+    }
+
+    /**
+     * Grav-2.0 `api` (>= ~1.0.3) path. The api saves the page BEFORE it fires
+     * onApiPageUpdated, so the header mutation done in onAdminSave above no
+     * longer reaches disk on that path. Reconcile here and re-save only when the
+     * list actually changed. (On the older api / classic admin onApiPageUpdated
+     * doesn't fire, so onAdminSave handles it and this is never reached.)
+     */
+    public function onApiPageUpdated(Event $event)
+    {
+        if (!$this->config->get('plugins.image-intake.enabled', true)) {
+            return;
+        }
+        if (!$this->config->get('plugins.image-intake.gallery_sync.enabled', true)) {
+            return;
+        }
+        $page = isset($event['page']) ? $event['page'] : (isset($event['object']) ? $event['object'] : null);
+        if (!$page
+            || !method_exists($page, 'header')
+            || !method_exists($page, 'path')
+            || !method_exists($page, 'template')
+            || !method_exists($page, 'save')) {
+            return;
+        }
+        $template = basename((string) $page->template());
+        $fields = (array) $this->config->get('plugins.image-intake.gallery_sync.fields', []);
+        if (!array_key_exists($template, $fields)
+            || $fields[$template] === '' || $fields[$template] === null) {
+            return;
+        }
+        $field = (string) $fields[$template];
+
+        $header = $page->header();
+        $before = isset($header->{$field}) ? $header->{$field} : null;
+        $this->reconcileGalleryList($page, $field);
+        $after = isset($header->{$field}) ? $header->{$field} : null;
+        if ($before !== $after) {
+            $page->save();
+        }
     }
 
     /**
