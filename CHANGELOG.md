@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0]
+### Removed
+- **Gallery auto-sync** (`onAdminSave` / `onApiPageUpdated` / `reconcileGalleryList`, the `gallery_sync.*` config and its Preferences toggle). This was a workaround for [getgrav/grav-plugin-admin2#74](https://github.com/getgrav/grav-plugin-admin2/issues/74) — admin2 couldn't drag-reorder Page Media at all, so galleries used a custom `list` blueprint field synced from Page Media on every save. Fixed upstream in **admin2 v2.0.7** (native Page Media drag-reorder, refined into a Reorder toggle in v2.0.8), so the workaround, its extra "Gallery" tab on gallery templates, and the config it required are no longer needed.
+
+### Changed
+- Minimum requirement raised to **Grav 2.0+** (previously 1.7+, back when the plugin still needed to work under the classic admin's `onAdminSave`).
+- `newestFile()` (the upload-detection fallback used when `$_FILES['file']['name']` isn't available) now only considers image files, matching the primary detection path, instead of the newest file of any type in the page folder.
+
 ## [0.5.0]
 ### Fixed
 - **Gallery auto-sync under newer Grav-2.0 `api` (≈ ≥1.0.3 / Grav 2.0.3).** The api now saves the page *before* firing its update event, so the `header.<field>` mutation made in `onAdminSave` no longer reached disk — galleries stopped auto-populating their list from Page Media on save. Added an `onApiPageUpdated` hook that reconciles the list and re-saves only when it changed. `onAdminSave` is retained for the older api (1.0.2) / classic admin, where it still works, so the plugin stays compatible across both.

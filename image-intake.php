@@ -21,8 +21,6 @@ class ImageIntakePlugin extends Plugin
     {
         return [
             'onAdminAfterAddMedia'  => ['onAdminAfterAddMedia', 0],
-            'onAdminSave'           => ['onAdminSave', 0],
-            'onApiPageUpdated'      => ['onApiPageUpdated', 0],
             'onApiBeforePageCreate' => ['onApiBeforePageCreate', 0],
         ];
     }
@@ -85,164 +83,6 @@ class ImageIntakePlugin extends Plugin
         if ($cap > 0) {
             $this->shrink($file, $cap);
         }
-    }
-
-    /**
-     * Keep a gallery module's frontmatter list in sync with its Page Media.
-     *
-     * Fires on every page save (the Grav-2.0 `api` plugin re-fires `onAdminSave`
-     * with the page by reference, just before `$page->save()`). For pages whose
-     * template is listed in `gallery_sync.fields`, we rebuild the configured
-     * header list from the images actually in the page folder:
-     *   - new uploads gain a row (appended),
-     *   - deleted images lose their row,
-     *   - every row is written in the `{image: <file>}` map form so the admin's
-     *     thumbnail picker renders (a single-field list otherwise saves as bare
-     *     strings, which blanks the thumbnail).
-     * The user's drag order is preserved for files that still exist.
-     */
-    public function onAdminSave(Event $event)
-    {
-        if (!$this->config->get('plugins.image-intake.enabled', true)) {
-            return;
-        }
-        if (!$this->config->get('plugins.image-intake.gallery_sync.enabled', true)) {
-            return;
-        }
-
-        // onAdminSave also fires for users / config; act only on Page-like objects.
-        $page = isset($event['page']) ? $event['page'] : (isset($event['object']) ? $event['object'] : null);
-        if (!$page
-            || !method_exists($page, 'header')
-            || !method_exists($page, 'path')
-            || !method_exists($page, 'template')) {
-            return;
-        }
-
-        $template = basename((string) $page->template());
-        $fields = (array) $this->config->get('plugins.image-intake.gallery_sync.fields', []);
-        if (!array_key_exists($template, $fields)
-            || $fields[$template] === '' || $fields[$template] === null) {
-            return;
-        }
-
-        $this->reconcileGalleryList($page, (string) $fields[$template]);
-    }
-
-    /**
-     * Grav-2.0 `api` (>= ~1.0.3) path. The api saves the page BEFORE it fires
-     * onApiPageUpdated, so the header mutation done in onAdminSave above no
-     * longer reaches disk on that path. Reconcile here and re-save only when the
-     * list actually changed. (On the older api / classic admin onApiPageUpdated
-     * doesn't fire, so onAdminSave handles it and this is never reached.)
-     */
-    public function onApiPageUpdated(Event $event)
-    {
-        if (!$this->config->get('plugins.image-intake.enabled', true)) {
-            return;
-        }
-        if (!$this->config->get('plugins.image-intake.gallery_sync.enabled', true)) {
-            return;
-        }
-        $page = isset($event['page']) ? $event['page'] : (isset($event['object']) ? $event['object'] : null);
-        if (!$page
-            || !method_exists($page, 'header')
-            || !method_exists($page, 'path')
-            || !method_exists($page, 'template')
-            || !method_exists($page, 'save')) {
-            return;
-        }
-        $template = basename((string) $page->template());
-        $fields = (array) $this->config->get('plugins.image-intake.gallery_sync.fields', []);
-        if (!array_key_exists($template, $fields)
-            || $fields[$template] === '' || $fields[$template] === null) {
-            return;
-        }
-        $field = (string) $fields[$template];
-
-        $header = $page->header();
-        $before = isset($header->{$field}) ? $header->{$field} : null;
-        $this->reconcileGalleryList($page, $field);
-        $after = isset($header->{$field}) ? $header->{$field} : null;
-        if ($before !== $after) {
-            $page->save();
-        }
-    }
-
-    /**
-     * Rebuild $page->header()->{$field} from the image files in the page folder.
-     */
-    private function reconcileGalleryList($page, $field)
-    {
-        $folder = $page->path();
-        if (!$folder || !is_dir($folder)) {
-            return;
-        }
-
-        // 1. Image files actually present (stable natural order for any new files).
-        $exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        $onDisk = [];
-        foreach (glob($folder . '/*') ?: [] as $f) {
-            if (is_file($f)
-                && in_array(strtolower(pathinfo($f, PATHINFO_EXTENSION)), $exts, true)) {
-                $onDisk[] = basename($f);
-            }
-        }
-        sort($onDisk, SORT_NATURAL | SORT_FLAG_CASE);
-        $onDiskSet = array_flip($onDisk);
-
-        // 2. Current order from the existing list (tolerate {image: x} maps and bare scalars).
-        $header = $page->header();
-        $current = isset($header->{$field}) ? $header->{$field} : null;
-        $existing = [];
-        if (is_array($current)) {
-            foreach ($current as $row) {
-                if (is_array($row)) {
-                    $name = isset($row['image']) ? $row['image'] : reset($row);
-                } else {
-                    $name = $row;
-                }
-                $name = is_string($name) ? basename(trim($name)) : '';
-                if ($name !== '') {
-                    $existing[] = $name;
-                }
-            }
-        }
-
-        // 3. Preferred order: existing gallery rows first (preserves the user's
-        //    drag order), then `media_order` (so a not-yet-migrated gallery keeps
-        //    its current display order the first time it is synced), then any
-        //    remaining files by name (new uploads land at the end). Keep only
-        //    files still on disk (drops orphans) and de-dupe.
-        $order = $existing;
-        $mediaOrder = isset($header->media_order) ? $header->media_order : '';
-        if (is_string($mediaOrder) && $mediaOrder !== '') {
-            foreach (explode(',', $mediaOrder) as $m) {
-                $m = basename(trim($m));
-                if ($m !== '') {
-                    $order[] = $m;
-                }
-            }
-        }
-        foreach ($onDisk as $m) {
-            $order[] = $m;
-        }
-
-        $result = [];
-        $seen = [];
-        foreach ($order as $name) {
-            if (isset($onDiskSet[$name]) && !isset($seen[$name])) {
-                $result[] = $name;
-                $seen[$name] = true;
-            }
-        }
-
-        // 4. Normalize to {image: file} maps and write back so $page->save() persists it.
-        $list = [];
-        foreach ($result as $name) {
-            $list[] = ['image' => $name];
-        }
-        $header->{$field} = $list;
     }
 
     /**
@@ -407,8 +247,13 @@ class ImageIntakePlugin extends Plugin
     {
         $best = null;
         $bestTime = -1;
-        foreach (glob($folder . '/*') as $f) {
-            if (is_file($f) && filemtime($f) > $bestTime) {
+        $exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        foreach (glob($folder . '/*') ?: [] as $f) {
+            if (!is_file($f)
+                || !in_array(strtolower(pathinfo($f, PATHINFO_EXTENSION)), $exts, true)) {
+                continue;
+            }
+            if (filemtime($f) > $bestTime) {
                 $bestTime = filemtime($f);
                 $best = $f;
             }

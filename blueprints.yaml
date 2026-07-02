@@ -1,8 +1,8 @@
 name: Image Intake
 slug: image-intake
 type: plugin
-version: 0.5.0
-description: "On Page-Media upload, sanitizes the filename and shrinks oversized images to a per-template maximum width (discarding the original). Also keeps gallery modules' photo list in sync with their Page Media on save, and (on Grav 2.0/admin2) restores the blueprint Content-body default on new pages. Widths are configured here per modular template — no SSH required."
+version: 0.6.0
+description: "On Page-Media upload, sanitizes the filename and shrinks oversized images to a per-template maximum width (discarding the original). Also restores the blueprint Content-body default on new pages under Grav 2.0/admin2. Widths are configured here per modular template — no SSH required."
 icon: image
 author:
   name: FRC 449
@@ -13,7 +13,7 @@ keywords: media, image, resize, upload, sanitize, imagemagick
 license: MIT
 
 dependencies:
-  - { name: grav, version: '>=1.7.0' }
+  - { name: grav, version: '>=2.0.0' }
 
 form:
   validation: loose
@@ -33,18 +33,6 @@ form:
       type: toggle
       label: Sanitize filenames
       help: "Lowercase the name and replace spaces and unsafe characters with hyphens on upload."
-      highlight: 1
-      default: 1
-      options:
-        1: Enabled
-        0: Disabled
-      validate:
-        type: bool
-
-    gallery_sync.enabled:
-      type: toggle
-      label: Gallery auto-sync
-      help: "On save of a gallery module, rebuild its photo list from the page's images — add a row for each new upload, drop rows for deleted images, and keep every row thumbnail-friendly. Preserves your drag order. Applies to the templates listed under gallery_sync.fields in the plugin config."
       highlight: 1
       default: 1
       options:

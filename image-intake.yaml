@@ -7,9 +7,5 @@ caps:
   gallery: 1200
   hero: 2560
   feature-images: 800
-gallery_sync:
-  enabled: true
-  fields:
-    gallery-draggable: gallery
 content_seed:
   enabled: true
