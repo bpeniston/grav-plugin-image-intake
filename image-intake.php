@@ -1,6 +1,7 @@
 <?php
 namespace Grav\Plugin;
 
+use Grav\Common\Data\Blueprint;
 use Grav\Common\Grav;
 use Grav\Common\Plugin;
 use RocketTheme\Toolbox\Event\Event;
@@ -20,9 +21,42 @@ class ImageIntakePlugin extends Plugin
     public static function getSubscribedEvents()
     {
         return [
+            'onPluginsInitialized'  => ['onPluginsInitialized', 0],
             'onAdminAfterAddMedia'  => ['onAdminAfterAddMedia', 0],
             'onApiBeforePageCreate' => ['onApiBeforePageCreate', 0],
         ];
+    }
+
+    /**
+     * Register capWidthFields() as an allowed dynamic-data provider.
+     *
+     * Grav >= 2.0.13 gates every `data-*@` provider behind an allowlist, closing an
+     * arbitrary-static-method bypass (GHSA-7pgq-cr25-xvc8, GHSA-cxv3-5jj3-cpgr).
+     * Without this registration the provider is refused *silently* — no exception,
+     * nothing in grav.log — so this call is a prerequisite for the "Template widths"
+     * fieldset ever populating.
+     *
+     * NOTE: it is not sufficient on its own. Under admin2 the fieldset still renders
+     * empty, because the api plugin loads plugin/config blueprints with
+     * `(new Blueprint($path))->load()` and never calls `->init()` — and `init()` is
+     * what resolves `data-*@` directives at all. Verified on Grav 2.0.13 / api 1.0.x:
+     * with this registration in place capWidthFields() *is* invoked and returns its
+     * fields, yet the blueprint still reports `caps => fieldset, children=0`. Tracked
+     * upstream; once the api calls init(), this registration makes the fieldset work.
+     *
+     * Cap *enforcement* is unaffected either way: onAdminAfterAddMedia reads
+     * `plugins.image-intake.caps` straight from config and never touches a blueprint.
+     * Until the upstream fix lands, widths are edited in
+     * user/config/plugins/image-intake.yaml.
+     *
+     * Guarded by method_exists so the plugin still loads on 2.0.x below 2.0.13, which
+     * predates the allowlist and needs no registration.
+     */
+    public function onPluginsInitialized()
+    {
+        if (method_exists(Blueprint::class, 'addAllowedDynamicCallable')) {
+            Blueprint::addAllowedDynamicCallable(self::class . '::capWidthFields');
+        }
     }
 
     public function onAdminAfterAddMedia(Event $event)

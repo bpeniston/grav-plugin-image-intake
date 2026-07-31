@@ -1,8 +1,8 @@
 name: Image Intake
 slug: image-intake
 type: plugin
-version: 0.6.0
-description: "On Page-Media upload, sanitizes the filename and shrinks oversized images to a per-template maximum width (discarding the original). Also restores the blueprint Content-body default on new pages under Grav 2.0/admin2. Widths are configured here per modular template — no SSH required."
+version: 0.6.1
+description: "On Page-Media upload, sanitizes the filename and shrinks oversized images to a per-template maximum width (discarding the original). Also restores the blueprint Content-body default on new pages under Grav 2.0/admin2. NOTE: the per-template width fields below do not render under admin2 (the api never calls Blueprint::init(), so dynamic fields are dropped — see CHANGELOG 0.6.1); set widths in user/config/plugins/image-intake.yaml until that is fixed upstream. Resizing and filename sanitizing are unaffected."
 icon: image
 author:
   name: FRC 449

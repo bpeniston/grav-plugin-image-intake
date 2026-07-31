@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1]
+### Added
+- **Registered `capWidthFields()` as an allowed dynamic-data provider.** Grav >= 2.0.13 gates every `data-*@` provider behind an allowlist, closing an arbitrary-static-method bypass ([GHSA-7pgq-cr25-xvc8](https://github.com/getgrav/grav/security/advisories/GHSA-7pgq-cr25-xvc8), [GHSA-cxv3-5jj3-cpgr](https://github.com/getgrav/grav/security/advisories/GHSA-cxv3-5jj3-cpgr)); an unregistered provider is refused **silently**, with no exception and nothing in `grav.log`. Registration now happens via `Blueprint::addAllowedDynamicCallable()` in a new `onPluginsInitialized` handler, guarded by `method_exists` so the plugin still loads on 2.0.x below 2.0.13.
+
+### Known issue (not fixed by this release)
+- **The "Template widths" fieldset still renders empty under admin2.** The allowlist registration above is a *prerequisite*, not a cure. The api plugin loads plugin/config blueprints with `(new Blueprint($path))->load()` and never calls `->init()` — and `init()` is what resolves `data-*@` directives. Verified on Grav 2.0.13 / admin2 2.0.16: with registration in place `capWidthFields()` *is* invoked and returns its fields, yet the blueprint still reports `caps => fieldset, children=0`. (The api's *page*-blueprint path uses the full `load()->init()` pipeline and is unaffected; this is the same class of bug fixed there in grav-plugin-admin2#3.) Reported upstream.
+- **Cap enforcement is unaffected and always has been.** `onAdminAfterAddMedia` reads `plugins.image-intake.caps` straight from config and never touches a blueprint, so configured widths — and filename sanitizing — keep applying on every admin upload. Until the upstream fix lands, widths are edited in `user/config/plugins/image-intake.yaml`.
+
 ## [0.6.0]
 ### Removed
 - **Gallery auto-sync** (`onAdminSave` / `onApiPageUpdated` / `reconcileGalleryList`, the `gallery_sync.*` config and its Preferences toggle). This was a workaround for [getgrav/grav-plugin-admin2#74](https://github.com/getgrav/grav-plugin-admin2/issues/74) — admin2 couldn't drag-reorder Page Media at all, so galleries used a custom `list` blueprint field synced from Page Media on every save. Fixed upstream in **admin2 v2.0.7** (native Page Media drag-reorder, refined into a Reorder toggle in v2.0.8), so the workaround, its extra "Gallery" tab on gallery templates, and the config it required are no longer needed.
